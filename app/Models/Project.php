@@ -23,5 +23,7 @@ class Project extends Model
         'web_link',      // NOVÝ
         'image_path',
         'is_approved', // Povolíme měnit i status schválení
+        'likes',        // NOVÉ
+    'is_featured', 
     ];
 }

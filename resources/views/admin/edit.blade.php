@@ -58,6 +58,22 @@
                                       required class="mt-1 block w-full rounded-md border-gray-300 shadow-sm">{{ old('description', $project->description) }}</textarea>
                             @error('description')<p class="text-red-500 text-xs mt-1">{{ $message }}</p>@enderror
                         </div>
+
+                        <!-- PŘIDAT DO admin/edit.blade.php -->
+<div class="mt-4">
+    <label for="is_featured" class="flex items-center space-x-2 cursor-pointer">
+        <input type="checkbox" 
+               id="is_featured" 
+               name="is_featured" 
+               value="1" 
+               {{ old('is_featured', $project->is_featured) ? 'checked' : '' }}
+               class="rounded text-indigo-600">
+        <span class="text-sm font-medium text-gray-700 dark:text-gray-300">
+            Zobrazit v Carouselu na úvodní stránce (Featured)
+        </span>
+    </label>
+</div>
+<!-- ... -->
                         
                         <div class="flex justify-end gap-3">
                             <a href="{{ route('admin.dashboard') }}" class="inline-flex items-center px-4 py-2 bg-gray-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-gray-700">Zpět</a>

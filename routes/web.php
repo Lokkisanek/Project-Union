@@ -3,7 +3,8 @@
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\ProjectController;
-use App\Http\Controllers\AdminController; // NOVÉ
+use App\Http\Controllers\AdminController;
+use App\Http\Controllers\ContactController; 
 
 /*
 |--------------------------------------------------------------------------
@@ -11,27 +12,34 @@ use App\Http\Controllers\AdminController; // NOVÉ
 |--------------------------------------------------------------------------
 */
 
-// Hlavní stránka s výpisem schválených projektů
-Route::get('/', [ProjectController::class, 'index'])->name('home');
+// 1. ÚVODNÍ/VSTUPNÍ STRÁNKA (Steam-like s carouselom)
+Route::get('/', [ProjectController::class, 'intro'])->name('intro'); 
 
-// Routy pro formulář pro nahrávání projektu (veřejné)
+// 2. SEZNAM VŠECH PROJEKTŮ
+Route::get('/projects', [ProjectController::class, 'index'])->name('home');
+
+// 3. DETAIL PROJEKTU (Steam-like detail)
+Route::get('/projects/{project}', [ProjectController::class, 'show'])->name('projects.show');
+Route::post('/projects/{project}/like', [ProjectController::class, 'like'])->name('projects.like');
+// 4. Kontaktní stránka
+Route::get('/contacts', [ContactController::class, 'index'])->name('contacts');
+
+// 5. Přidání projektu (formulář)
 Route::get('/submit', [ProjectController::class, 'create'])->name('projects.create');
 Route::post('/submit', [ProjectController::class, 'store'])->name('projects.store');
 
 
 /*
 |--------------------------------------------------------------------------
-| Routy pro autentizaci a uživatele (BACKEND)
+| Routy pro autentizaci a admin sekci
 |--------------------------------------------------------------------------
 */
 
-// Routa pro dashboard (kam se uživatel dostane po přihlášení)
+// Routa pro dashboard (přesměrování na admin sekci, pokud je uživatel admin)
 Route::get('/dashboard', function () {
-    // Přesměrování na admin dashboard, pokud je uživatel admin.
     if (auth()->check() && auth()->user()->is_admin) {
         return redirect()->route('admin.dashboard');
     }
-    // Jinak zobrazí klasický dashboard (pro případ, že by se přihlásil běžný student)
     return view('dashboard');
 })->middleware(['auth'])->name('dashboard');
 
@@ -43,14 +51,9 @@ Route::middleware('auth')->group(function () {
 });
 
 
-/*
-|--------------------------------------------------------------------------
-| Routy pro Admin sekci (VYŽADUJE PŘIHLÁŠENÍ)
-|--------------------------------------------------------------------------
-*/
-
+// Routy pro Admin sekci (VYŽADUJE PŘIHLÁŠENÍ)
 Route::middleware(['auth'])->group(function () {
-    // Admin dashboard - seznam čekajících projektů
+    // Admin dashboard - seznam VŠECH projektů (pro správu)
     Route::get('/admin/dashboard', [AdminController::class, 'dashboard'])->name('admin.dashboard');
     
     // Akce: Schválení projektu
@@ -58,13 +61,12 @@ Route::middleware(['auth'])->group(function () {
     
     // Akce: Mazání projektu (DELETE požadavek)
     Route::delete('/admin/projects/{project}', [AdminController::class, 'destroy'])->name('admin.projects.destroy');
-
-     Route::get('/admin/projects/{project}/edit', [AdminController::class, 'edit'])->name('admin.projects.edit');
     
-    // Routa pro uložení změn (PATCH požadavek)
+    // Akce: Editace (zobrazení formuláře)
+    Route::get('/admin/projects/{project}/edit', [AdminController::class, 'edit'])->name('admin.projects.edit');
+    
+    // Akce: Uložení změn (PATCH požadavek)
     Route::patch('/admin/projects/{project}', [AdminController::class, 'update'])->name('admin.projects.update');
-
-    Route::get('/admin/projects', [AdminController::class, 'index'])->name('admin.projects.index');
 });
 
 

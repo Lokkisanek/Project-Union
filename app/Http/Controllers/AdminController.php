@@ -5,36 +5,83 @@ namespace App\Http\Controllers;
 use App\Models\Project;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Redirect;
-use Illuminate\Support\Facades\Storage; // Přidáme pro mazání souborů
+use Illuminate\Support\Facades\Storage;
 
 class AdminController extends Controller
 {
     /**
-     * Zobrazí Admin dashboard se seznamem čekajících projektů.
+     * Zobrazí Admin dashboard se seznamem VŠECH projektů (pro rychlé schvalování a editaci).
      */
-  public function dashboard()
-{
-    if (!auth()->check() || !auth()->user()->is_admin) {
-        abort(403, 'Přístup odepřen.');
+    public function dashboard()
+    {
+        // 1. Kontrola oprávnění admina
+        if (!auth()->check() || !auth()->user()->is_admin) {
+            abort(403, 'Přístup odepřen. Nejste administrátor.');
+        }
+
+        // 2. Načtení VŠECH projektů (neschválené jako první pro lepší přehled)
+        $allProjects = Project::orderBy('is_approved', 'asc')
+                              ->latest()
+                              ->get();
+
+        return view('admin.dashboard', [
+            'projects' => $allProjects // Posíláme VŠECHNY projekty
+        ]);
     }
 
-    // Načteme VŠECHNY projekty, seřazené od nejnovějšího po nejstarší.
-    // Pro lepší přehlednost na začátek řadíme ty neschválené.
-    $allProjects = Project::orderBy('is_approved', 'asc') // False (0) bude první
-                          ->latest()
-                          ->get(); 
+    /**
+     * Zobrazí formulář pro editaci daného projektu.
+     */
+    public function edit(Project $project)
+    {
+        if (!auth()->check() || !auth()->user()->is_admin) {
+            abort(403, 'Přístup odepřen.');
+        }
 
-    return view('admin.dashboard', [
-        'projects' => $allProjects // Posíláme VŠECHNY projekty
-    ]);
-}
+        return view('admin.edit', compact('project'));
+    }
+
+    /**
+     * Uloží změny v projektu.
+     */
+    public function update(Request $request, Project $project)
+    {
+        if (!auth()->check() || !auth()->user()->is_admin) {
+            abort(403, 'Přístup odepřen.');
+        }
+
+        // 1. Validace dat
+        $validated = $request->validate([
+            'author_name' => 'required|string|max:255',
+            'author_email' => 'required|email|ends_with:@spst.eu',
+            'title' => 'required|string|max:255',
+            'description' => 'required|string',
+            'web_link' => 'nullable|url|max:255',
+            
+            // Nová pole pro správu: likes a featured
+            'is_featured' => ['boolean'], 
+            'likes' => ['nullable', 'integer'], // Možnost ručně nastavit lajky
+            
+            // Soubory a obrázky pro zjednodušení v editaci neupravujeme/nahráváme
+            // Předpokládáme, že pokud admin chce změnit soubor, smaže projekt a nahraje ho znovu
+        ]);
+
+        // 2. Zpracování checkboxu (pokud není zaškrtnut, Laravel ho nepošle, musíme to ošetřit)
+        $validated['is_featured'] = $request->has('is_featured');
+        
+        // 3. Aktualizace dat
+        $project->update($validated);
+
+        return Redirect::route('admin.dashboard')->with('success', 'Projekt byl úspěšně aktualizován.');
+    }
+
     /**
      * Schválí daný projekt.
      */
     public function approve(Project $project)
     {
         if (!auth()->check() || !auth()->user()->is_admin) {
-            abort(403, 'Přístup odepřen. Nejste administrátor.');
+            abort(403, 'Přístup odepřen.');
         }
 
         // Aktualizuje status na schváleno (true)
@@ -49,7 +96,7 @@ class AdminController extends Controller
     public function destroy(Project $project)
     {
         if (!auth()->check() || !auth()->user()->is_admin) {
-            abort(403, 'Přístup odepřen. Nejste administrátor.');
+            abort(403, 'Přístup odepřen.');
         }
 
         // 1. Smazání fyzických souborů z disku (dobrý zvyk!)
@@ -65,52 +112,4 @@ class AdminController extends Controller
 
         return Redirect::route('admin.dashboard')->with('success', 'Projekt byl trvale smazán!');
     }
-
-public function edit(Project $project)
-{
-    if (!auth()->check() || !auth()->user()->is_admin) {
-        abort(403, 'Přístup odepřen.');
-    }
-
-    // Vrátí view s formulářem, kterému pošleme data projektu
-    return view('admin.edit', compact('project'));
 }
-
-// Metoda pro uložení změn
-public function update(Request $request, Project $project)
-{
-    if (!auth()->check() || !auth()->user()->is_admin) {
-        abort(403, 'Přístup odepřen.');
-    }
-
-    // 1. Validace dat
-    $validated = $request->validate([
-        'author_name' => 'required|string|max:255',
-        'author_email' => 'required|email|ends_with:@spst.eu',
-        'title' => 'required|string|max:255',
-        'description' => 'required|string',
-        'web_link' => 'nullable|url|max:255',
-        // Zde bychom neřešili nahrávání nových souborů, to je složitější.
-        // Předpokládáme, že soubory jsou nahrány a my upravujeme jen texty.
-    ]);
-
-    // 2. Aktualizace dat v databázi
-    $project->update($validated);
-
-    // 3. Přesměrování zpět s úspěšnou zprávou
-    return Redirect::route('admin.dashboard')->with('success', 'Projekt byl úspěšně aktualizován.');
-}
-// Zobrazí seznam VŠECH projektů (schválených i čekajících)
-public function index()
-{
-    if (!auth()->check() || !auth()->user()->is_admin) {
-        abort(403, 'Přístup odepřen.');
-    }
-
-    $allProjects = Project::latest()->get(); // Načte VŠECHNY projekty
-
-    return view('admin.index', ['projects' => $allProjects]);
-}
-
-}
-

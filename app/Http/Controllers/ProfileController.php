@@ -5,6 +5,9 @@ namespace App\Http\Controllers;
 use App\Http\Requests\ProfileUpdateRequest;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule; 
+use Illuminate\Support\Facades\Storage; 
+use App\Models\User; 
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Redirect;
 use Illuminate\View\View;
@@ -24,18 +27,47 @@ class ProfileController extends Controller
     /**
      * Update the user's profile information.
      */
-    public function update(ProfileUpdateRequest $request): RedirectResponse
-    {
-        $request->user()->fill($request->validated());
+   public function update(Request $request): RedirectResponse
+{
+    // Validace stávajících i nových polí
+    $validated = $request->validate([
+        'name' => ['required', 'string', 'max:255'],
+        'email' => ['required', 'string', 'lowercase', 'email', 'max:255', Rule::unique(User::class)->ignore($request->user()->id)],
+        'position' => ['nullable', 'string', 'max:255'], // Nové
+        'phone' => ['nullable', 'string', 'max:20'],     // Nové
+        'profile_image' => ['nullable', 'image', 'mimes:jpg,jpeg,png,gif', 'max:2048'],
+         'github_link' => ['nullable', 'url', 'max:255'],
+        'linkedin_link' => ['nullable', 'url', 'max:255'],
+        'instagram_link' => ['nullable', 'url', 'max:255'],
+        'portfolio_link' => ['nullable', 'url', 'max:255'],
+        'show_on_contacts' => ['boolean'], 
+    ]);
 
-        if ($request->user()->isDirty('email')) {
-            $request->user()->email_verified_at = null;
+ $validated['show_on_contacts'] = $request->has('show_on_contacts');
+
+    $user = $request->user();
+    
+    // Zpracování nahrání obrázku
+    if ($request->hasFile('profile_image')) {
+        // Smaže starý obrázek, pokud existuje
+        if ($user->profile_image) {
+            Storage::disk('public')->delete($user->profile_image);
         }
-
-        $request->user()->save();
-
-        return Redirect::route('profile.edit')->with('status', 'profile-updated');
+        // Uloží nový obrázek
+        $validated['profile_image'] = $request->file('profile_image')->store('profiles', 'public');
     }
+
+    // Aktualizace dat v uživatelském modelu
+    $user->fill($validated);
+
+    if ($user->isDirty('email')) {
+        $user->email_verified_at = null;
+    }
+
+    $user->save();
+
+    return Redirect::route('profile.edit')->with('status', 'profile-updated');
+}
 
     /**
      * Delete the user's account.
