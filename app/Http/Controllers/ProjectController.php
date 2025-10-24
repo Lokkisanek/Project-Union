@@ -3,134 +3,181 @@
 namespace App\Http\Controllers;
 
 use App\Models\Project;
+use App\Models\Category;
+use App\Models\ProjectGallery;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Redirect;
-use Illuminate\Support\Facades\Storage; // Potřebujeme pro uložení souborů
+use Illuminate\Support\Facades\Storage;
 
-// Třída Intervention Image je zcela odstraněna
+// NEPOUŽÍVÁME ŽÁDNOU EXTERNÍ KNIHOVNU PRO OBRÁZKY
 
 class ProjectController extends Controller
 {
-
-    // Uvnitř app/Http/Controllers/ProjectController.php
-
-public function like(Project $project)
-{
-    $sessionKey = 'liked_project_' . $project->id;
-    
-    // 1. Kontrola, zda uživatel v této session lajkoval
-    if (session($sessionKey)) {
-        return Redirect::back()->with('error', 'Tento projekt jsi již ohodnotil.');
-    }
-
-    // 2. Zvýšení počtu lajků
-    $project->increment('likes');
-    
-    // 3. Nastavení session pro zamezení opakování
-    session()->put($sessionKey, true);
-
-    // 4. Přesměrování zpět
-    return Redirect::back()->with('success', 'Projekt byl úspěšně ohodnocen!');
-}
-    // NOVÁ METODA: Zobrazení Intro stránky s daty pro carousel
-public function intro()
-{
-    
-    // 1. Získá 4 nejoblíbenější projekty NEBO projekty označené jako Featured
-    $featuredProjects = Project::where('is_approved', true)
-        ->where('is_featured', true)
-        ->orderBy('likes', 'desc') // Seřadit podle lajků
-        ->take(4) // Vezmi jen 4
-        ->get();
-        
-    // Pokud nenajdeme 4 featured, můžeme přidat další podle likes
-    if ($featuredProjects->isEmpty() && Project::count() > 0) {
-        $featuredProjects = Project::where('is_approved', true)->orderBy('likes', 'desc')->take(4)->get();
-    }
-
-    return view('intro', ['featured' => $featuredProjects]);
-}
-
-// NOVÁ METODA: Zobrazení Detailu projektu (pro Steam-like)
-public function show(Project $project)
-{
-    // Kontrola, jestli je projekt schválený, než ho ukážeme veřejnosti
-    if (!$project->is_approved && (!auth()->check() || !auth()->user()->is_admin)) {
-        abort(404);
-    }
-
-    return view('projects.show', compact('project'));
-}
-
-// Původní metoda index() (seznam projektů) zůstane stejná
-// Původní metoda create(), store() zůstanou stejné
     /**
-     * Zobrazí hlavní stránku s výpisem schválených projektů.
+     * Zobrazí hlavní stránku (home) s carouselem a seznamem projektů.
      */
-    public function index()
+    public function home(Request $request)
     {
-        $approvedProjects = Project::where('is_approved', true)
-            ->latest()
+        $search = $request->input('search');
+
+        $featuredIds = Project::where('is_approved', true)
+            ->when($search, function ($query) use ($search) {
+                $query->where('title', 'LIKE', "%{$search}%");
+            })
+            ->orderBy('likes', 'desc')
+            ->take(4)
+            ->pluck('id');
+
+        $featuredProjects = Project::with('category')->whereIn('id', $featuredIds)->get();
+
+        $projects = Project::with('category')
+            ->where('is_approved', true)
+            ->whereNotIn('id', $featuredIds)
+            ->when($search, function ($query) use ($search) {
+                $query->where('title', 'LIKE', "%{$search}%");
+            })
+            ->orderBy('likes', 'desc')
             ->get();
 
-        return view('welcome', ['projects' => $approvedProjects]);
+        return view('home', [
+            'featured' => $featuredProjects, 
+            'projects' => $projects,         
+            'search' => $search             
+        ]);
     }
 
     /**
-     * Zobrazí formulář pro vytvoření nového projektu.
+     * Zobrazí detail konkrétního projektu.
+     */
+    public function show(Project $project)
+    {
+        if (!$project->is_approved && (!auth()->check() || !auth()->user()->is_admin)) {
+            abort(404);
+        }
+        $project->load('category', 'gallery'); 
+        return view('projects.show', compact('project'));
+    }
+
+    /**
+     * Zpracuje hlasování (Lajk).
+     */
+    public function like(Project $project)
+    {
+        $sessionKey = 'liked_project_' . $project->id;
+        if (session($sessionKey)) {
+            return Redirect::back()->with('error', 'Tento projekt jsi již ohodnotil.');
+        }
+        $project->increment('likes');
+        session()->put($sessionKey, true);
+        return Redirect::back()->with('success', 'Projekt byl úspěšně ohodnocen!');
+    }
+
+    /**
+     * Zobrazí formulář pro vytvoření projektu.
      */
     public function create()
     {
-        return view('projects.create');
+        $categories = Category::orderBy('name')->get();
+        return view('projects.create', compact('categories'));
     }
 
     /**
-     * Uloží nový projekt do databáze (Standardní uložení, bez ořezu).
+     * Uloží nový projekt do databáze (s nativním PHP ořezem).
      */
     public function store(Request $request)
     {
-        // 1. Validace dat z formuláře
         $validatedData = $request->validate([
             'author_name' => 'required|string|max:255',
             'author_email' => 'required|email|ends_with:@spst.eu',
             'title' => 'required|string|max:255',
             'description' => 'required|string',
-            
-            // Volitelné soubory/odkazy
+            'category_id' => 'required|exists:categories,id',
             'web_link' => 'nullable|url|max:255',
-            'file' => 'nullable|file|mimes:pdf,zip,doc,docx|max:20480',
-            'image' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:5120',
+            'main_file' => 'nullable|file|mimes:pdf,zip,doc,docx|max:20480', 
+            'main_image' => 'required|image|mimes:jpeg,png,jpg,gif|max:5120',
+            'gallery_images' => ['required', 'array', 'min:4', 'max:4'], 
+            'gallery_images.*' => ['image', 'mimes:jpeg,png,jpg,gif', 'max:5120'],
         ]);
 
-        // 2. Kontrola, zda bylo nahráno ALPOŇ něco
-        if (empty($validatedData['file']) && empty($validatedData['web_link'])) {
-            return Redirect::back()->withErrors(['submission' => 'Musíte nahrát buď projektový soubor, nebo zadat odkaz na webovou aplikaci.'])->withInput();
+        if (empty($validatedData['main_file']) && empty($validatedData['web_link'])) {
+            return Redirect::back()->withErrors(['submission' => 'Musíte nahrát buď hlavní projektový soubor, nebo zadat odkaz na web.'])->withInput();
         }
 
-        $filePath = null;
-        $imagePath = null;
+        // --- AUTOMATICKÝ OŘEZ POMOCÍ NATIVNÍ PHP GD KNIHOVNY ---
+        $mainImagePath = null;
+        if ($request->hasFile('main_image')) {
+            $image = $request->file('main_image');
+            $filename = time() . '-' . uniqid() . '.' . $image->getClientOriginalExtension();
+            $targetPath = storage_path('app/public/project_images/' . $filename);
 
-        // 3. Uložení projektového souboru
-        if ($request->hasFile('file')) {
-            $filePath = $request->file('file')->store('projects', 'public');
+            // Cílové rozměry 16:9
+            $targetWidth = 1280;
+            $targetHeight = 720;
+            $targetRatio = $targetWidth / $targetHeight;
+
+            list($originalWidth, $originalHeight, $imageType) = getimagesize($image->getRealPath());
+            $originalRatio = $originalWidth / $originalHeight;
+
+            switch ($imageType) {
+                case IMAGETYPE_JPEG: $sourceImage = imagecreatefromjpeg($image->getRealPath()); break;
+                case IMAGETYPE_PNG: $sourceImage = imagecreatefrompng($image->getRealPath()); break;
+                case IMAGETYPE_GIF: $sourceImage = imagecreatefromgif($image->getRealPath()); break;
+                default:
+                    $mainImagePath = $request->file('main_image')->store('project_images', 'public');
+                    goto end_image_processing;
+            }
+            
+            $srcX = 0; $srcY = 0;
+            $srcWidth = $originalWidth; $srcHeight = $originalHeight;
+
+            if ($originalRatio > $targetRatio) {
+                $srcWidth = $originalHeight * $targetRatio;
+                $srcX = ($originalWidth - $srcWidth) / 2;
+            } else {
+                $srcHeight = $originalWidth / $targetRatio;
+                $srcY = ($originalHeight - $srcHeight) / 2;
+            }
+
+            $destinationImage = imagecreatetruecolor($targetWidth, $targetHeight);
+            imagecopyresampled($destinationImage, $sourceImage, 0, 0, $srcX, $srcY, $targetWidth, $targetHeight, $srcWidth, $srcHeight);
+
+            switch ($imageType) {
+                case IMAGETYPE_JPEG: imagejpeg($destinationImage, $targetPath, 90); break;
+                case IMAGETYPE_PNG: imagepng($destinationImage, $targetPath, 9); break;
+                case IMAGETYPE_GIF: imagegif($destinationImage, $targetPath); break;
+            }
+
+            imagedestroy($sourceImage);
+            imagedestroy($destinationImage);
+
+            $mainImagePath = 'project_images/' . $filename;
+
+            end_image_processing:
         }
+        // --- KONEC OŘEZU ---
 
-        // 4. Uložení obrázku (standardní uložení, bez jakékoliv úpravy)
-        if ($request->hasFile('image')) {
-            $imagePath = $request->file('image')->store('project_images', 'public');
-        }
+        $filePath = $request->hasFile('main_file') ? $request->file('main_file')->store('projects', 'public') : null;
 
-        // 5. Uložení záznamu do databáze
-        Project::create([
+        $project = Project::create([
             'author_name' => $validatedData['author_name'],
             'author_email' => $validatedData['author_email'],
             'title' => $validatedData['title'],
             'description' => $validatedData['description'],
+            'category_id' => $validatedData['category_id'],
+            'main_image' => $mainImagePath,
             'web_link' => $validatedData['web_link'] ?? null,
             'file_path' => $filePath,
-            'image_path' => $imagePath,
             'is_approved' => false,
         ]);
+        
+        foreach ($request->file('gallery_images') as $index => $galleryFile) {
+            $galleryPath = $galleryFile->store('project_gallery', 'public');
+            ProjectGallery::create([
+                'project_id' => $project->id,
+                'path' => $galleryPath,
+                'sort_order' => $index,
+            ]);
+        }
 
         return Redirect::route('projects.create')->with('success', 'Projekt byl úspěšně nahrán a čeká na schválení. Děkujeme!');
     }

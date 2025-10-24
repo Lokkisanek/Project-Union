@@ -15,15 +15,17 @@ class Project extends Model
      * @var array
      */
     protected $fillable = [
-        'author_name',
-        'author_email',
-        'title',
-        'description',
-        'file_path',
-        'web_link',      // NOVÝ
-        'image_path',
-        'is_approved', // Povolíme měnit i status schválení
-        'likes',        // NOVÉ
-    'is_featured', 
+        'author_name', 'author_email', 'title', 'description', 
+    'file_path', 'web_link', 'image_path', 'is_approved',
+    'likes', 'is_featured', // NOVÉ POLE
+    'main_image', // NOVÉ
+    'category_id', // NOVÉ
     ];
+
+    public function category() {
+    return $this->belongsTo(Category::class);
+}
+public function gallery() {
+    return $this->hasMany(ProjectGallery::class);
+}
 }

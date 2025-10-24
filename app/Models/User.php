@@ -18,18 +18,10 @@ class User extends Authenticatable
      * @var list<string>
      */
     protected $fillable = [
-        'name',
-    'email',
-    'password',
-    'is_admin',
-    'position',        // NOVÉ
-    'phone',           // NOVÉ
-    'profile_image',   // NOVÉ
-    'github_link',      // NOVÉ
-    'linkedin_link',    // NOVÉ
-    'instagram_link',   // NOVÉ
-    'portfolio_link',   // NOVÉ
-    'show_on_contacts', // NOVÉ
+       'name', 'email', 'password', 'is_admin', 
+    'position', 'phone', 'profile_image', 
+    'github_link', 'linkedin_link', 'instagram_link', 'portfolio_link',
+    'show_on_contacts', // NOVÉ POLE
     ];
 
     /**

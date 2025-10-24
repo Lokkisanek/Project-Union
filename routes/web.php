@@ -12,21 +12,21 @@ use App\Http\Controllers\ContactController;
 |--------------------------------------------------------------------------
 */
 
-// 1. ÚVODNÍ/VSTUPNÍ STRÁNKA (Steam-like s carouselom)
-Route::get('/', [ProjectController::class, 'intro'])->name('intro'); 
+// 1. ÚVODNÍ/VSTUPNÍ STRÁNKA (Hlavní stránka s carouselom a vyhledáváním)
+Route::get('/', [ProjectController::class, 'home'])->name('home'); 
 
-// 2. SEZNAM VŠECH PROJEKTŮ
-Route::get('/projects', [ProjectController::class, 'index'])->name('home');
-
-// 3. DETAIL PROJEKTU (Steam-like detail)
+// 2. DETAIL PROJEKTU (Steam-like detail)
 Route::get('/projects/{project}', [ProjectController::class, 'show'])->name('projects.show');
-Route::post('/projects/{project}/like', [ProjectController::class, 'like'])->name('projects.like');
-// 4. Kontaktní stránka
+
+// 3. Kontaktní stránka
 Route::get('/contacts', [ContactController::class, 'index'])->name('contacts');
 
-// 5. Přidání projektu (formulář)
+// 4. Přidání projektu (formulář)
 Route::get('/submit', [ProjectController::class, 'create'])->name('projects.create');
 Route::post('/submit', [ProjectController::class, 'store'])->name('projects.store');
+
+// 5. Akce pro lajkování (Lajk projektu)
+Route::post('/projects/{project}/like', [ProjectController::class, 'like'])->name('projects.like');
 
 
 /*
