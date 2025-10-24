@@ -1,13 +1,11 @@
 services:
   - type: web
     name: project-union
-    runtime: php
+    runtime: docker # Změna na Docker!
     plan: free
-    buildCommand: "composer install --no-dev && npm install && npm run build && php artisan key:generate --force && php artisan migrate --force"
-    startCommand: "php artisan serve --host 0.0.0.0 --port $PORT"
+    healthCheckPath: /
+    dockerfilePath: ./Dockerfile # Cesta k Dockerfile
     envVars:
-      - key: NODE_VERSION
-        value: 20
       - key: APP_ENV
         value: production
       - key: APP_DEBUG
@@ -16,11 +14,18 @@ services:
         value: pgsql
       - key: DATABASE_URL
         fromDatabase:
-          name: laravel-db # POZOR: Změňte na přesný název vaší databáze na Renderu
-          property: internalConnectionString
-      - key: APP_KEY # Důležité: APP_KEY je potřeba nastavit ručně
+          name: project-union-db # Změňte na název vaší databáze
+          property: connectionString # Opravená vlastnost
+      - key: APP_URL
+        fromService:
+          type: web
+          name: project-union
+          property: url
+      - key: APP_KEY # Tento klíč musíte nastavit ručně!
         sync: false
+      - key: LOG_CHANNEL
+        value: stderr
 
 databases:
-  - name: laravel-db # POZOR: Změňte na přesný název vaší databáze na Renderu
+  - name: project-union-db # Změňte na název vaší databáze
     plan: free
