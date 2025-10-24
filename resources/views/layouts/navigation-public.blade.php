@@ -28,16 +28,43 @@
                 </div>
             </div>
 
-            {{-- VYHLEDÁVÁNÍ A ADMIN LOGIN --}}
-            <div class="flex items-center space-x-4">
-                
-                {{-- Zde voláme naši Livewire komponentu, která se stará o vyhledávání --}}
-                <livewire:search-dropdown />
-                
-                <a href="{{ route('login') }}" class="text-sm font-medium text-gray-300 hover:text-white">
-                    Admin Login
-                </a>
-            </div>
+           <div class="flex items-center space-x-4">
+    
+    <livewire:search-dropdown />
+    
+    {{-- Pro nepřihlášené --}}
+    @guest
+        <a href="{{ route('login') }}" class="text-sm font-medium text-gray-300 hover:text-white">
+            Login
+        </a>
+    @endguest
+
+    {{-- Pro přihlášené --}}
+    @auth
+        {{-- Zkontrolujeme, zda je přihlášený uživatel admin --}}
+        @if (Auth::user()->is_admin)
+            <a href="{{ route('admin.dashboard') }}" class="text-sm font-semibold text-indigo-400 hover:text-indigo-300">
+                Můj Dashboard
+            </a>
+        @endif
+
+        {{-- Zde můžeme přidat i odkaz na profil a odhlášení --}}
+        <a href="{{ route('profile.edit') }}" class="text-sm font-medium text-gray-300 hover:text-white">
+            Můj Profil
+        </a>
+
+        <form method="POST" action="{{ route('logout') }}">
+            @csrf
+            <a href="{{ route('logout') }}"
+               onclick="event.preventDefault(); this.closest('form').submit();"
+               class="text-sm font-medium text-gray-300 hover:text-white">
+                Odhlásit se
+            </a>
+        </form>
+    @endauth
+    
+</div>
+            
         </div>
     </div>
 </nav>

@@ -16,35 +16,41 @@ class ProjectController extends Controller
     /**
      * Zobrazí hlavní stránku (home) s carouselem a seznamem projektů.
      */
-    public function home(Request $request)
-    {
-        $search = $request->input('search');
+   public function home(Request $request)
+{
+    $search = $request->input('search');
+    
+    // 1. Získáme 4 nejoblíbenější SCHVÁLENÉ projekty pro CAROUSEL
+    $featuredProjects = Project::where('is_approved', true)
+        ->when($search, function ($query) use ($search) {
+            $query->where('title', 'LIKE', "%{$search}%");
+        })
+        ->orderBy('likes', 'desc') // KLÍČOVÉ: řadíme podle lajků sestupně
+        ->take(4) 
+        ->get();
+        
+    // 2. Získáme pole ID featured projektů
+    $featuredIds = $featuredProjects->pluck('id');
 
-        $featuredIds = Project::where('is_approved', true)
-            ->when($search, function ($query) use ($search) {
-                $query->where('title', 'LIKE', "%{$search}%");
-            })
-            ->orderBy('likes', 'desc')
-            ->take(4)
-            ->pluck('id');
+    // 3. Získáme VŠECHNY OSTATNÍ schválené projekty
+    // Použijeme WHERE NOT IN, což je nejbezpečnější
+    $projects = Project::where('is_approved', true)
+        ->whereNotIn('id', $featuredIds) // Vyloučíme podle ID
+        ->when($search, function ($query) use ($search) {
+            $query->where('title', 'LIKE', "%{$search}%");
+        })
+        ->orderBy('likes', 'desc') // Zde také řadíme podle lajků
+        ->get();
 
-        $featuredProjects = Project::with('category')->whereIn('id', $featuredIds)->get();
-
-        $projects = Project::with('category')
-            ->where('is_approved', true)
-            ->whereNotIn('id', $featuredIds)
-            ->when($search, function ($query) use ($search) {
-                $query->where('title', 'LIKE', "%{$search}%");
-            })
-            ->orderBy('likes', 'desc')
-            ->get();
-
-        return view('home', [
-            'featured' => $featuredProjects, 
-            'projects' => $projects,         
-            'search' => $search             
-        ]);
-    }
+        $categories = Category::all();
+        
+    return view('home', [
+        'featured' => $featuredProjects, 
+        'projects' => $projects,         
+        'search' => $search,    
+        'categories' => $categories // <-- Přidáme kategorie do view         
+    ]);
+}
 
     /**
      * Zobrazí detail konkrétního projektu.

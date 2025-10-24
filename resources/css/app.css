@@ -1,3 +1,21 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+body {
+    /*
+      Vytvoříme radiální gradient, který vychází z horní části obrazovky.
+      Začíná tmavě modro-šedou a přechází do ještě tmavší.
+    */
+    background-color: #0f172a; /* Fallback pro staré prohlížeče */
+    background-image: radial-gradient(circle at left, #1e293b, #0f172a);
+    min-height: 100vh;
+}
+/* Utility třída pro skrytí scrollbaru */
+.scrollbar-hide::-webkit-scrollbar {
+    display: none;
+}
+.scrollbar-hide {
+    -ms-overflow-style: none;  /* IE and Edge */
+    scrollbar-width: none;  /* Firefox */
+}

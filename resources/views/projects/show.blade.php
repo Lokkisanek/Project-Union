@@ -34,7 +34,7 @@
                     <div class="grid grid-cols-2 md:grid-cols-4 gap-2 mt-4">
                         @foreach ($project->gallery as $galleryImage)
                             <a href="{{ asset('storage/' . $galleryImage->path) }}" target="_blank" class="block">
-                                <img src="{{ asset('storage/' . $galleryImage->path) }}" alt="Obrázek z galerie" class="w-full h-32 object-cover rounded hover:opacity-75 transition-opacity">
+                                <img src="{{ asset('storage/' . $galleryImage->path) }}" alt="Obrázek z galerie" loading="lazy" class="w-full h-32 object-cover rounded hover:opacity-75 transition-opacity">
                             </a>
                         @endforeach
                     </div>

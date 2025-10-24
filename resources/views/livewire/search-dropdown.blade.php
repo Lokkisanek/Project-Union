@@ -13,7 +13,9 @@
     {{-- Dropdown s výsledky se zobrazí, jen pokud je v poli pro hledání text --}}
     @if (strlen($search) >= 2)
         <div x-show="open" class="absolute z-50 w-full mt-1 bg-gray-700 border border-gray-600 rounded shadow-lg max-h-96 overflow-y-auto">
-            
+            <div wire:loading class="p-3 text-gray-400">
+    Hledám...
+</div>
             {{-- Projdeme všechny výsledky a zobrazíme je --}}
             @forelse ($searchResults as $project)
                 <a href="{{ route('projects.show', $project) }}" class="block p-3 hover:bg-gray-600 transition-colors">
@@ -21,7 +23,7 @@
                         
                         {{-- Náhledový obrázek --}}
                         @if ($project->main_image)
-                            <img src="{{ asset('storage/' . $project->main_image) }}" class="w-16 h-9 object-cover rounded mr-3">
+                            <img src="{{ asset('storage/' . $project->main_image) }}" loading="lazy" class="w-16 h-9 object-cover rounded mr-3">
                         @else
                             <div class="w-16 h-9 bg-gray-800 rounded mr-3 flex items-center justify-center text-xs text-gray-400">Bez obrázku</div>
                         @endif
