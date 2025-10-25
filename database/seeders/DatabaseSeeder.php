@@ -13,16 +13,12 @@ class DatabaseSeeder extends Seeder
     /**
      * Seed the application's database.
      */
-    public function run(): void
-    {
-        // User::factory(10)->create();
-
-        
-
-$this->call([
-        
+// Kolem řádku 14
+public function run(): void
+{
+    $this->call([
+        \Database\Seeders\CategorySeeder::class, // Volání CategorySeederu
+        \Database\Seeders\ProjectSeeder::class,  // Volání ProjectSeederu
     ]);
-
-
-    }
+}
 }

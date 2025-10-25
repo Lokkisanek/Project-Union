@@ -2,9 +2,9 @@
 
 namespace Database\Factories;
 
-use App\Models\Category; // <<< TENTO ŘÁDEK TAM CHYBÍ
-
+use App\Models\Category;
 use Illuminate\Database\Eloquent\Factories\Factory;
+use Faker\Factory as FakerFactory; // <<< DŮLEŽITÉ PŘIDAT
 
 /**
  * @extends \Illuminate\Database\Eloquent\Factories\Factory<\App\Models\Project>
@@ -18,20 +18,29 @@ class ProjectFactory extends Factory
      */
     public function definition(): array
     {
+        // Vytvoříme lokální instanci Fakeru, aby fungovala v případě chyby
+        $faker = $this->faker; 
+
         // Získáme ID existujících kategorií, abychom mohli náhodně jednu vybrat
         $categoryIds = Category::pluck('id')->toArray();
 
         return [
-            'author_name' => fake()->name(),
-            'author_email' => fake()->unique()->safeEmail(),
-            'title' => fake()->words(3, true),
-            'description' => fake()->paragraph(5),
-            'category_id' => fake()->randomElement($categoryIds),
-            'web_link' => fake()->optional()->url(),
+            // Používáme lokální $faker
+            'author_name' => $faker->name(), 
+            'author_email' => $faker->unique()->safeEmail(), 
+            'title' => $faker->words(3, true),
+            'description' => $faker->paragraph(5),
+            
+            // Kontrola, zda existují kategorie, než se pokusíme vybrat
+            'category_id' => !empty($categoryIds) ? $faker->randomElement($categoryIds) : null,
+            
+            'web_link' => $faker->optional()->url(),
             'file_path' => null,
-            'main_image' => 'project_images/' . fake()->randomElement(['placeholder1.jpg', 'placeholder2.jpg', 'placeholder3.jpg']),
-            'is_approved' => fake()->boolean(80),
-            'likes' => fake()->numberBetween(0, 500),
+            
+            'main_image' => 'project_images/' . $faker->randomElement(['placeholder1.jpg', 'placeholder2.jpg', 'placeholder3.jpg']),
+            
+            'is_approved' => $faker->boolean(80),
+            'likes' => $faker->numberBetween(0, 500),
         ];
     }
 }

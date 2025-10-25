@@ -12,10 +12,3 @@ body {
     min-height: 100vh;
 }
 /* Utility třída pro skrytí scrollbaru */
-.scrollbar-hide::-webkit-scrollbar {
-    display: none;
-}
-.scrollbar-hide {
-    -ms-overflow-style: none;  /* IE and Edge */
-    scrollbar-width: none;  /* Firefox */
-}
