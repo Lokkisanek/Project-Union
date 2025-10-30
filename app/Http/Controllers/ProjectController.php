@@ -43,14 +43,90 @@ class ProjectController extends Controller
         ->get();
 
         $categories = Category::all();
-        
+
+        // získat vybraný hero banner (pokud existuje) a vypočítat průměrnou barvu obrázku
+        $heroProject = null;
+        $heroColor = null;
+        if (class_exists(\App\Models\HeroBanner::class)) {
+            $hero = \App\Models\HeroBanner::where('is_active', true)->first();
+            if ($hero && $hero->project) {
+                $heroProject = $hero->project->load('category');
+
+                // Pokusíme se spočítat průměrnou barvu z main_image (pokud existuje)
+                try {
+                    $imagePath = storage_path('app/public/' . ltrim($heroProject->main_image, '/'));
+                    if (file_exists($imagePath)) {
+                        $heroColor = $this->getAverageColorFromImage($imagePath);
+                    }
+                } catch (\Throwable $e) {
+                    // ignore and keep null color
+                    $heroColor = null;
+                }
+            }
+        }
+
+        // Další sekce pro "Steam-like" layout
+        $topRated = Project::where('is_approved', true)
+            ->orderBy('likes', 'desc')
+            ->take(8)
+            ->get();
+
+        $newest = Project::where('is_approved', true)
+            ->orderBy('created_at', 'desc')
+            ->take(8)
+            ->get();
+
+        $editorsPicks = Project::where('is_approved', true)
+            ->inRandomOrder()
+            ->take(8)
+            ->get();
+
     return view('home', [
         'featured' => $featuredProjects, 
         'projects' => $projects,         
         'search' => $search,    
-        'categories' => $categories // <-- Přidáme kategorie do view         
+        'categories' => $categories, // <-- Přidáme kategorie do view
+        'topRated' => $topRated,
+        'newest' => $newest,
+        'editorsPicks' => $editorsPicks,
+        'heroProject' => $heroProject,
+        'heroColor' => $heroColor,
     ]);
 }
+
+    /**
+     * Vrátí průměrnou barvu obrázku ve formátu #rrggbb.
+     */
+    private function getAverageColorFromImage(string $path): ?string
+    {
+        if (! extension_loaded('gd')) {
+            return null;
+        }
+
+        $info = getimagesize($path);
+        if (! $info) return null;
+
+        $mime = $info['mime'];
+        switch ($mime) {
+            case 'image/jpeg': $img = imagecreatefromjpeg($path); break;
+            case 'image/png': $img = imagecreatefrompng($path); break;
+            case 'image/gif': $img = imagecreatefromgif($path); break;
+            default: return null;
+        }
+
+        // Resize to 1x1 to compute average color
+        $resized = imagecreatetruecolor(1, 1);
+        imagecopyresampled($resized, $img, 0, 0, 0, 0, 1, 1, imagesx($img), imagesy($img));
+        $rgb = imagecolorat($resized, 0, 0);
+        $r = ($rgb >> 16) & 0xFF;
+        $g = ($rgb >> 8) & 0xFF;
+        $b = $rgb & 0xFF;
+
+        imagedestroy($img);
+        imagedestroy($resized);
+
+        return sprintf('#%02x%02x%02x', $r, $g, $b);
+    }
 
     /**
      * Zobrazí detail konkrétního projektu.
@@ -62,6 +138,21 @@ class ProjectController extends Controller
         }
         $project->load('category', 'gallery'); 
         return view('projects.show', compact('project'));
+    }
+
+    /**
+     * Zobrazí stránku kategorie se seznamem her (projektů) patřících do ní.
+     */
+    public function category(Category $category)
+    {
+        // Zobrazíme pouze schválené projekty v této kategorii a eager-load category
+        $projects = Project::where('is_approved', true)
+            ->where('category_id', $category->id)
+            ->with('category')
+            ->orderBy('likes', 'desc')
+            ->paginate(12);
+
+        return view('categories.show', compact('category', 'projects'));
     }
 
     /**

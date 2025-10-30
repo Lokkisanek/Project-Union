@@ -18,6 +18,9 @@ Route::get('/', [ProjectController::class, 'home'])->name('home');
 // 2. DETAIL PROJEKTU (Steam-like detail)
 Route::get('/projects/{project}', [ProjectController::class, 'show'])->name('projects.show');
 
+// 2a. STRÁNKA KATEGORIE - seznam projektů pro danou kategorii
+Route::get('/categories/{category}', [ProjectController::class, 'category'])->name('categories.show');
+
 // 3. Kontaktní stránka
 Route::get('/contacts', [ContactController::class, 'index'])->name('contacts');
 
@@ -67,6 +70,11 @@ Route::middleware(['auth'])->group(function () {
     
     // Akce: Uložení změn (PATCH požadavek)
     Route::patch('/admin/projects/{project}', [AdminController::class, 'update'])->name('admin.projects.update');
+    
+    // Správa hero banneru (admin)
+    Route::get('/admin/hero-banner', [App\Http\Controllers\AdminHeroController::class, 'edit'])->name('admin.hero.edit');
+    Route::patch('/admin/hero-banner', [App\Http\Controllers\AdminHeroController::class, 'update'])->name('admin.hero.update');
+    Route::post('/admin/projects/{project}/set-hero', [App\Http\Controllers\AdminHeroController::class, 'setHero'])->name('admin.projects.set-hero');
 });
 
 

@@ -100,6 +100,12 @@
                     @method('DELETE')
                     <button type="submit" onclick="return confirm('OPRAVDU chcete projekt Smazat?')" class="text-red-600 dark:text-red-400 hover:underline hover:font-semibold transition-all ml-3">Smazat</button>
                 </form>
+                
+                {{-- Rychlá akce: nastavit tento projekt jako hero banner --}}
+                <form action="{{ route('admin.projects.set-hero', $project) }}" method="POST">
+                    @csrf
+                    <button type="submit" class="text-indigo-600 dark:text-indigo-400 hover:underline hover:font-semibold transition-all ml-3">Nastavit jako hero</button>
+                </form>
             </td>
         </tr>
     @endforeach

@@ -15,6 +15,6 @@ class ProjectSeeder extends Seeder
     public function run(): void
     {
         // Vytvoří 20 falešných projektů pomocí naší ProjectFactory
-        Project::factory()->count(20)->create();
+        Project::factory()->count(500)->create();
     }
 }

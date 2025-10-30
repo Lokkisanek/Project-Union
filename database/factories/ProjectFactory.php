@@ -37,7 +37,7 @@ class ProjectFactory extends Factory
             'web_link' => $faker->optional()->url(),
             'file_path' => null,
             
-            'main_image' => 'project_images/' . $faker->randomElement(['placeholder1.jpg', 'placeholder2.jpg', 'placeholder3.jpg']),
+            'main_image' => 'project_images/' . $faker->randomElement(['placeholder1.png', 'placeholder2.png', 'placeholder3.png']),
             
             'is_approved' => $faker->boolean(80),
             'likes' => $faker->numberBetween(0, 500),
